@@ -1,53 +1,169 @@
-# VibeMark
+# Vibemark
 
-AI-powered marketing consultant for solopreneurs with vibecoded apps.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Built with Claude](https://img.shields.io/badge/built%20with-Claude-blueviolet)](https://claude.ai)
 
-## What it does
+**Your marketing department for vibe-coded projects.**
 
-VibeMark connects to your GitHub repository, analyzes your project, and acts as a marketing consultant to help you:
+Vibemark scans your project, coaches you through marketing strategy, generates channel-ready copy, and posts it for you. Built for technical builders who can ship apps but struggle with distribution.
 
-- **Discover your story** — articulate what you built and why
-- **Identify user personas** — understand who needs your product
-- **Craft value propositions** — different messages for different audiences
-- **Build a go-to-market strategy** — taglines, elevator pitches, and channel recommendations
+---
 
-## Getting started
+## Features
 
-### Prerequisites
+- **Project Scanning** — Automatically reads your README, package.json, pyproject.toml to understand your project. No copy-pasting context.
+- **Marketing Consultant** — Guided interview sessions that teach you to think like a marketer: audience, positioning, value prop, origin story.
+- **Content Generation** — AI-powered copy for Twitter/X threads, LinkedIn posts, HN/Reddit launches, landing pages, and READMEs.
+- **Open-Ended Brainstorming** — Free-form strategy sessions on any marketing topic (launch strategy, pricing, naming, positioning).
+- **Channel Automation** — *(coming soon)* Post directly to social channels from the CLI.
 
-- Node.js 18+
-- A GitHub OAuth App ([create one here](https://github.com/settings/developers))
-- An Anthropic API key
+---
 
-### Setup
+## Quick Start
 
 ```bash
-# Install dependencies
-npm install
+# Install
+pip install vibemark
 
-# Copy env file and fill in your credentials
-cp .env.example .env
+# Scan your project
+vibemark scan .
 
-# Run the dev server
-npm run dev
+# Run the marketing strategy interview
+vibemark interview .
+
+# Generate social media launch content
+vibemark generate social
+
+# Generate everything (social, landing page, README)
+vibemark generate --all
 ```
 
-### Environment variables
+---
 
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_CLIENT_ID` | GitHub OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
-| `AUTH_SECRET` | NextAuth secret (generate with `openssl rand -base64 32`) |
-| `ANTHROPIC_API_KEY` | Anthropic API key for the AI consultant |
+## Usage
 
-Set your GitHub OAuth callback URL to `http://localhost:3000/api/auth/callback/github`.
+### Initialize your marketing config
 
-## Tech stack
+```bash
+vibemark init .
+```
 
-- **Next.js 16** with App Router
-- **TypeScript**
-- **Tailwind CSS v4**
-- **NextAuth.js** (GitHub OAuth)
-- **Anthropic Claude API** (marketing consultant AI)
-- **localStorage** for project persistence
+Scans your project, asks you a few questions about your audience and tone, and saves everything to `vibemark.yaml`. This is your marketing foundation.
+
+### Run a marketing discovery session
+
+```bash
+vibemark interview .
+```
+
+A guided 6-step session covering:
+1. The problem you solve
+2. Who it's for
+3. What makes you different
+4. Your value proposition
+5. Your origin story
+6. Your marketing goals
+
+The AI consultant explains *why* each question matters, gives feedback, and asks follow-ups. All insights are saved to your config.
+
+### Brainstorm a specific topic
+
+```bash
+vibemark brainstorm "launch strategy"
+vibemark brainstorm "pricing"
+vibemark brainstorm "naming"
+```
+
+Open-ended conversation with an AI marketing consultant who knows your project context.
+
+### Generate marketing content
+
+```bash
+# Single channel
+vibemark generate social
+vibemark generate landing
+vibemark generate readme
+
+# All channels at once
+vibemark generate --all
+
+# Custom output directory
+vibemark generate social --output ./marketing
+
+# Use a specific model
+vibemark generate social --model claude-sonnet-4-20250514
+```
+
+Output is displayed in your terminal and saved to `vibemark-output/`.
+
+---
+
+## Configuration
+
+Vibemark stores your project profile, brand voice, and marketing insights in `vibemark.yaml`:
+
+```yaml
+project:
+  name: My App
+  description: A tool that does something useful
+  language: Python
+  features:
+    - Feature one
+    - Feature two
+
+brand:
+  tone: casual and authentic
+  audience: indie hackers
+  tagline: Your catchy tagline here
+  keywords:
+    - keyword1
+    - keyword2
+
+insights:
+  problem_statement: The problem your project solves
+  value_proposition: Your one-liner value prop
+  target_personas:
+    - Persona 1
+    - Persona 2
+  differentiators:
+    - What makes you different
+  origin_story: How and why you built this
+  goals:
+    - Your marketing goals
+```
+
+Config values take priority over scanned data. The interview and brainstorm commands update this file automatically.
+
+---
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `vibemark init [DIR]` | Scan project + interactive prompts → create config |
+| `vibemark scan [DIR]` | Analyze project files, display profile |
+| `vibemark interview [DIR]` | Guided marketing discovery session |
+| `vibemark brainstorm [TOPIC]` | Open-ended strategy brainstorm |
+| `vibemark generate <channel>` | Generate content (`social`, `landing`, `readme`) |
+| `vibemark generate --all` | Generate all channel types |
+
+---
+
+## Contributing
+
+Vibemark is in early development and looking for feedback from fellow builders.
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes (`git commit -m 'Add my feature'`)
+4. Push to the branch (`git push origin feature/my-feature`)
+5. Open a Pull Request
+
+Bug reports, feature requests, and feedback are all welcome via GitHub Issues.
+
+---
+
+## License
+
+MIT
