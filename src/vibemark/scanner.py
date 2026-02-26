@@ -14,32 +14,16 @@ def scan_project(directory: Path) -> ProjectProfile:
     """Scan a project directory and return a ProjectProfile."""
     profile = ProjectProfile()
 
-    readme = _read_readme(directory)
+    readme = _fetch_readme_local(directory)
     if readme:
         profile.readme_content = readme
 
-    pkg = _read_package_json(directory)
-    pyproj = _read_pyproject_toml(directory)
+    pkg = _fetch_package_json_local(directory)
+    pyproj = _fetch_pyproject_toml_local(directory)
 
-    # Extract from package.json
-    if pkg:
-        profile.name = profile.name or pkg.get("name", "")
-        profile.description = profile.description or pkg.get("description", "")
-        profile.repo_url = profile.repo_url or _extract_repo_url(pkg)
-        profile.license = profile.license or pkg.get("license", "")
-        if "dependencies" in pkg or "devDependencies" in pkg:
-            profile.language = profile.language or "JavaScript"
-            profile.frameworks = _detect_js_frameworks(pkg)
-
-    # Extract from pyproject.toml
-    if pyproj:
-        project_section = pyproj.get("project", {})
-        profile.name = profile.name or project_section.get("name", "")
-        profile.description = profile.description or project_section.get("description", "")
-        profile.license = profile.license or _extract_pyproject_license(project_section)
-        if project_section:
-            profile.language = profile.language or "Python"
-            profile.frameworks = profile.frameworks or _detect_py_frameworks(project_section)
+    # Parse fetched content
+    parse_package_json(profile, pkg)
+    parse_pyproject_toml(profile, pyproj)
 
     # Fallback language detection
     if not profile.language:
@@ -52,7 +36,10 @@ def scan_project(directory: Path) -> ProjectProfile:
     return profile
 
 
-def _read_readme(directory: Path) -> str:
+# ── Fetch functions (local filesystem) ────────────────────────────────
+
+
+def _fetch_readme_local(directory: Path) -> str:
     """Read the first README file found."""
     for name in ["README.md", "README.rst", "README.txt", "README"]:
         path = directory / name
@@ -61,7 +48,7 @@ def _read_readme(directory: Path) -> str:
     return ""
 
 
-def _read_package_json(directory: Path) -> dict | None:
+def _fetch_package_json_local(directory: Path) -> dict | None:
     path = directory / "package.json"
     if not path.exists():
         return None
@@ -71,12 +58,11 @@ def _read_package_json(directory: Path) -> dict | None:
         return None
 
 
-def _read_pyproject_toml(directory: Path) -> dict | None:
+def _fetch_pyproject_toml_local(directory: Path) -> dict | None:
     path = directory / "pyproject.toml"
     if not path.exists():
         return None
     try:
-        # Use tomllib on 3.11+, fallback to tomli
         import sys
 
         if sys.version_info >= (3, 11):
@@ -89,6 +75,38 @@ def _read_pyproject_toml(directory: Path) -> dict | None:
         return tomllib.loads(path.read_text())
     except Exception:
         return None
+
+
+# ── Parse functions (source-agnostic) ─────────────────────────────────
+
+
+def parse_package_json(profile: ProjectProfile, pkg: dict | None) -> None:
+    """Parse package.json data into a profile. Works with local or GitHub-fetched content."""
+    if not pkg:
+        return
+    profile.name = profile.name or pkg.get("name", "")
+    profile.description = profile.description or pkg.get("description", "")
+    profile.repo_url = profile.repo_url or _extract_repo_url(pkg)
+    profile.license = profile.license or pkg.get("license", "")
+    if "dependencies" in pkg or "devDependencies" in pkg:
+        profile.language = profile.language or "JavaScript"
+        profile.frameworks = _detect_js_frameworks(pkg)
+
+
+def parse_pyproject_toml(profile: ProjectProfile, pyproj: dict | None) -> None:
+    """Parse pyproject.toml data into a profile. Works with local or GitHub-fetched content."""
+    if not pyproj:
+        return
+    project_section = pyproj.get("project", {})
+    profile.name = profile.name or project_section.get("name", "")
+    profile.description = profile.description or project_section.get("description", "")
+    profile.license = profile.license or _extract_pyproject_license(project_section)
+    if project_section:
+        profile.language = profile.language or "Python"
+        profile.frameworks = profile.frameworks or _detect_py_frameworks(project_section)
+
+
+# ── Helper functions ──────────────────────────────────────────────────
 
 
 def _extract_repo_url(pkg: dict) -> str:

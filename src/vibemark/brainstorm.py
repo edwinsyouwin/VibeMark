@@ -1,10 +1,11 @@
-"""Interactive brainstorming and marketing consultation using Claude."""
+"""Interactive brainstorming and marketing consultation using Claude.
+
+This module is the CLI adapter — it handles Rich terminal UI and delegates
+business logic to the conversation service.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import anthropic
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -13,6 +14,8 @@ from rich.prompt import Prompt
 from vibemark.models import VibemarkConfig
 
 console = Console()
+
+# ── Constants shared with conversation_service ────────────────────────
 
 CONSULTANT_SYSTEM = """\
 You are a seasoned marketing consultant who specializes in helping solo developers \
@@ -140,9 +143,20 @@ def build_context(config: VibemarkConfig) -> str:
 
 
 def run_interview(config: VibemarkConfig, model: str | None = None) -> VibemarkConfig:
-    """Run the structured interview flow, updating config with insights."""
-    model_name = model or config.model
-    client = anthropic.Anthropic()
+    """Run the structured interview flow, updating config with insights.
+
+    Uses the conversation service for business logic, Rich for terminal UI.
+    """
+    from vibemark.services.conversation_service import (
+        advance_topic,
+        finish_interview,
+        get_current_topic,
+        get_topic_opener,
+        interview_turn,
+        start_interview,
+    )
+
+    session = start_interview(config, model=model)
 
     console.print(
         Panel(
@@ -155,88 +169,68 @@ def run_interview(config: VibemarkConfig, model: str | None = None) -> VibemarkC
         )
     )
 
-    context = build_context(config)
+    topic_count = len(INTERVIEW_TOPICS)
 
-    for i, topic in enumerate(INTERVIEW_TOPICS, 1):
-        console.print(f"\n[bold cyan]--- Step {i}/{len(INTERVIEW_TOPICS)}: {topic['title']} ---[/bold cyan]\n")
-        console.print(Markdown(topic["opener"]))
-        console.print()
+    while not session.finished:
+        topic = get_current_topic(session)
+        if topic is None:
+            break
 
-        # Collect multi-turn conversation for this topic
-        messages: list[dict] = []
-        insight_text = ""
+        idx = session.current_topic_index + 1
+        console.print(f"\n[bold cyan]--- Step {idx}/{topic_count}: {topic['title']} ---[/bold cyan]\n")
+
+        opener = get_topic_opener(session)
+        if opener:
+            console.print(Markdown(opener))
+            console.print()
 
         while True:
             answer = Prompt.ask("[bold green]You[/bold green]")
             if answer.lower() in ("skip", "done"):
                 break
 
-            messages.append({"role": "user", "content": answer})
-
-            # Build system prompt with current insights
-            insights_so_far = _summarize_insights(config.insights)
-            system = CONSULTANT_SYSTEM.format(
-                context=context,
-                topic=topic["title"],
-                insights=insights_so_far,
-            )
-
-            # Add instruction for the consultant to ask follow-up or wrap up
-            messages_with_nudge = messages.copy()
-            messages_with_nudge[-1] = {
-                "role": "user",
-                "content": answer
-                + "\n\n[System: Respond as the marketing consultant. Acknowledge what they shared, "
-                "add your expert perspective, then either ask a focused follow-up question or "
-                "summarize the key insight if you have enough. Keep it concise — 2-3 paragraphs max. "
-                "If you think this topic is well-covered, end with 'Let's move on to the next topic.' ]",
-            }
-
-            response = client.messages.create(
-                model=model_name,
-                max_tokens=1024,
-                system=system,
-                messages=messages_with_nudge,
-            )
-
-            assistant_text = "".join(b.text for b in response.content if b.type == "text")
-            messages.append({"role": "assistant", "content": assistant_text})
-            insight_text += f"\n{answer}"
+            result = interview_turn(session, answer)
 
             console.print()
-            console.print(Panel(Markdown(assistant_text), border_style="dim"))
+            console.print(Panel(Markdown(result.response), border_style="dim"))
             console.print()
 
-            if "move on" in assistant_text.lower() or "next topic" in assistant_text.lower():
+            if result.should_advance:
                 break
 
-        # Save insight to config
-        if insight_text.strip():
-            _save_insight(config, topic, insight_text.strip(), client, model_name, context)
+        # Advance to next topic
+        advance_topic(session)
 
         if answer.lower() == "done":
             break
 
     # Final synthesis
-    _synthesize(config, client, model_name, context)
+    synthesis = finish_interview(session)
+    if synthesis:
+        console.print()
+        console.print(
+            Panel(
+                Markdown(synthesis),
+                title="[bold green]Session Summary[/bold green]",
+                border_style="green",
+            )
+        )
 
-    return config
+    return session.config
 
 
 def run_brainstorm(config: VibemarkConfig, topic: str, model: str | None = None) -> None:
-    """Run an open-ended brainstorming session on a specific marketing topic."""
-    model_name = model or config.model
-    client = anthropic.Anthropic()
+    """Run an open-ended brainstorming session on a specific marketing topic.
 
-    context = build_context(config)
-    insights = _summarize_insights(config.insights)
-
-    system = (
-        CONSULTANT_SYSTEM.format(context=context, topic=topic, insights=insights)
-        + "\n\nThis is a free-form brainstorming session. Help the user explore ideas, "
-        "offer frameworks, give examples from successful developer tools, and help them "
-        "think through their marketing strategy. Be collaborative and creative."
+    Uses the conversation service for business logic, Rich for terminal UI.
+    """
+    from vibemark.services.conversation_service import (
+        brainstorm_opener,
+        brainstorm_turn,
+        start_brainstorm,
     )
+
+    session = start_brainstorm(config, topic, model=model)
 
     console.print(
         Panel(
@@ -247,29 +241,8 @@ def run_brainstorm(config: VibemarkConfig, topic: str, model: str | None = None)
         )
     )
 
-    messages: list[dict] = []
-
-    # Kick off with an opening from the consultant
-    opening = client.messages.create(
-        model=model_name,
-        max_tokens=1024,
-        system=system,
-        messages=[
-            {
-                "role": "user",
-                "content": f"I want to brainstorm about: {topic}. Help me think through this as my marketing consultant.",
-            }
-        ],
-    )
-    opening_text = "".join(b.text for b in opening.content if b.type == "text")
-    messages.append(
-        {
-            "role": "user",
-            "content": f"I want to brainstorm about: {topic}. Help me think through this as my marketing consultant.",
-        }
-    )
-    messages.append({"role": "assistant", "content": opening_text})
-
+    # Opening from the consultant
+    opening_text = brainstorm_opener(session)
     console.print()
     console.print(Panel(Markdown(opening_text), border_style="dim"))
     console.print()
@@ -279,128 +252,10 @@ def run_brainstorm(config: VibemarkConfig, topic: str, model: str | None = None)
         if answer.lower() == "done":
             break
 
-        messages.append({"role": "user", "content": answer})
-
-        response = client.messages.create(
-            model=model_name,
-            max_tokens=1024,
-            system=system,
-            messages=messages,
-        )
-
-        assistant_text = "".join(b.text for b in response.content if b.type == "text")
-        messages.append({"role": "assistant", "content": assistant_text})
+        assistant_text = brainstorm_turn(session, answer)
 
         console.print()
         console.print(Panel(Markdown(assistant_text), border_style="dim"))
         console.print()
 
     console.print("[bold green]Brainstorm session complete![/bold green]")
-
-
-def _summarize_insights(insights) -> str:  # noqa: ANN001
-    """Format current insights as a string."""
-    parts = []
-    if insights.problem_statement:
-        parts.append(f"Problem: {insights.problem_statement}")
-    if insights.target_personas:
-        parts.append(f"Audience: {', '.join(insights.target_personas)}")
-    if insights.value_proposition:
-        parts.append(f"Value prop: {insights.value_proposition}")
-    if insights.differentiators:
-        parts.append(f"Differentiators: {', '.join(insights.differentiators)}")
-    if insights.use_cases:
-        parts.append(f"Use cases: {', '.join(insights.use_cases)}")
-    if insights.origin_story:
-        parts.append(f"Origin: {insights.origin_story}")
-    if insights.goals:
-        parts.append(f"Goals: {', '.join(insights.goals)}")
-    return "\n".join(parts) if parts else "(none yet)"
-
-
-def _save_insight(
-    config: VibemarkConfig,
-    topic: dict,
-    raw_answer: str,
-    client: anthropic.Anthropic,
-    model: str,
-    context: str,
-) -> None:
-    """Use Claude to distill the user's answers into a clean insight and save to config."""
-    field = topic["config_field"]
-
-    # Ask Claude to distill
-    is_list = field in ("target_personas", "differentiators", "use_cases", "competitors", "goals")
-
-    if is_list:
-        instruction = (
-            f"Based on the user's answers about '{topic['title']}', extract a concise list of key points. "
-            "Return ONLY a JSON array of short strings, e.g. [\"point 1\", \"point 2\"]. No other text."
-        )
-    else:
-        instruction = (
-            f"Based on the user's answers about '{topic['title']}', write a concise 1-2 sentence summary "
-            "capturing the key insight. Return ONLY the summary text, nothing else."
-        )
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=256,
-        messages=[{"role": "user", "content": f"{instruction}\n\nUser's answers:\n{raw_answer}"}],
-    )
-    result = "".join(b.text for b in response.content if b.type == "text").strip()
-
-    if is_list:
-        import json
-
-        try:
-            items = json.loads(result)
-            if isinstance(items, list):
-                setattr(config.insights, field, [str(x) for x in items])
-        except json.JSONDecodeError:
-            # Fallback: split by newlines
-            setattr(config.insights, field, [line.strip("- ") for line in result.splitlines() if line.strip()])
-    else:
-        setattr(config.insights, field, result)
-
-
-def _synthesize(
-    config: VibemarkConfig,
-    client: anthropic.Anthropic,
-    model: str,
-    context: str,
-) -> None:
-    """Generate a final synthesis of all insights."""
-    insights = _summarize_insights(config.insights)
-    if insights == "(none yet)":
-        return
-
-    response = client.messages.create(
-        model=model,
-        max_tokens=1024,
-        system="You are a marketing consultant wrapping up a discovery session.",
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Here's what we gathered about the project:\n\n{context}\n\n"
-                    f"Marketing insights:\n{insights}\n\n"
-                    "Give a brief, encouraging wrap-up (3-4 paragraphs):\n"
-                    "1. Summarize their marketing foundation\n"
-                    "2. Suggest which marketing channel to tackle first and why\n"
-                    "3. Give one specific, actionable next step\n"
-                    "Keep it warm and practical."
-                ),
-            }
-        ],
-    )
-    synthesis = "".join(b.text for b in response.content if b.type == "text")
-
-    console.print()
-    console.print(
-        Panel(
-            Markdown(synthesis),
-            title="[bold green]Session Summary[/bold green]",
-            border_style="green",
-        )
-    )

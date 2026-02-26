@@ -244,3 +244,79 @@ def generate(
             continue
         display_content(result)
         save_content(result, output)
+
+
+# ── web ──────────────────────────────────────────────────────────────
+
+
+@app.command()
+def web(
+    port: Annotated[int, typer.Option("--port", "-p", help="API server port.")] = 8000,
+    frontend_port: Annotated[int, typer.Option("--frontend-port", help="Frontend dev server port.")] = 3000,
+    no_frontend: Annotated[bool, typer.Option("--no-frontend", help="Only start the API server.")] = False,
+) -> None:
+    """Start the Vibemark web interface (API + frontend dev servers)."""
+    import subprocess
+    import sys
+    import signal
+
+    try:
+        import uvicorn  # noqa: F401
+    except ImportError:
+        console.print(
+            "[red]Web dependencies not installed. Run:[/red]\n"
+            "  pip install vibemark[web]"
+        )
+        raise typer.Exit(1)
+
+    from vibemark.db.engine import init_db
+
+    init_db()
+
+    processes: list[subprocess.Popen] = []
+
+    def cleanup(sig=None, frame=None):
+        for p in processes:
+            try:
+                p.terminate()
+            except OSError:
+                pass
+        raise typer.Exit()
+
+    signal.signal(signal.SIGINT, cleanup)
+    signal.signal(signal.SIGTERM, cleanup)
+
+    # Start API server
+    console.print(f"[bold cyan]Starting API server on port {port}...[/bold cyan]")
+    api_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "vibemark.api.app:app", "--port", str(port), "--reload"],
+    )
+    processes.append(api_proc)
+
+    if not no_frontend:
+        # Start frontend dev server
+        frontend_dir = Path(__file__).parent.parent.parent / "frontend"
+        if not frontend_dir.exists():
+            # Try relative to cwd
+            frontend_dir = Path.cwd() / "frontend"
+
+        if frontend_dir.exists() and (frontend_dir / "package.json").exists():
+            console.print(f"[bold cyan]Starting frontend on port {frontend_port}...[/bold cyan]")
+            frontend_proc = subprocess.Popen(
+                ["npm", "run", "dev", "--", "--port", str(frontend_port)],
+                cwd=str(frontend_dir),
+            )
+            processes.append(frontend_proc)
+        else:
+            console.print("[yellow]Frontend directory not found. Starting API only.[/yellow]")
+
+    console.print(f"\n[bold green]Vibemark is running![/bold green]")
+    console.print(f"  API:      http://localhost:{port}")
+    if not no_frontend:
+        console.print(f"  Frontend: http://localhost:{frontend_port}")
+    console.print("\nPress Ctrl+C to stop.\n")
+
+    try:
+        api_proc.wait()
+    except KeyboardInterrupt:
+        cleanup()

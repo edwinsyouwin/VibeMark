@@ -75,3 +75,38 @@ class GeneratedContent(BaseModel):
     model_used: str = ""
     prompt_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
+
+
+class InterviewTurnResult(BaseModel):
+    """Result of a single interview turn."""
+
+    response: str
+    should_advance: bool = False
+
+
+class InterviewSession(BaseModel):
+    """State for a turn-by-turn interview session."""
+
+    config: VibemarkConfig
+    model: str = "claude-sonnet-4-20250514"
+    current_topic_index: int = 0
+    messages: list[dict] = Field(default_factory=list)
+    raw_answers: str = ""
+    finished: bool = False
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class BrainstormSession(BaseModel):
+    """State for a turn-by-turn brainstorm session."""
+
+    config: VibemarkConfig
+    topic: str
+    model: str = "claude-sonnet-4-20250514"
+    messages: list[dict] = Field(default_factory=list)
+    started: bool = False
+    finished: bool = False
+
+    class Config:
+        arbitrary_types_allowed = True

@@ -10,3 +10,11 @@ build/
 venv/
 .env
 vibemark-output/
+
+# Web frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# SQLite DB
+*.db
