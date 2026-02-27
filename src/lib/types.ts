@@ -17,6 +17,19 @@ export interface UploadedDocument {
   type: "text" | "markdown" | "pdf";
 }
 
+export interface RepoFile {
+  id: string;
+  path: string;
+  content: string;
+  autoFetched: boolean;
+}
+
+export interface TreeEntry {
+  path: string;
+  type: "blob" | "tree";
+  size?: number;
+}
+
 export interface Project {
   id: string;
   repoName: string;
@@ -25,6 +38,7 @@ export interface Project {
   repoUrl: string;
   repoLanguage: string | null;
   documents: UploadedDocument[];
+  repoFiles: RepoFile[];
   readmeContent: string | null;
   chatHistory: ChatMessage[];
   analysis: MarketingAnalysis | null;

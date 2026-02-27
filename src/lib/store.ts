@@ -1,6 +1,6 @@
 "use client";
 
-import { Project, ChatMessage, UploadedDocument, MarketingAnalysis } from "./types";
+import { Project, ChatMessage, UploadedDocument, MarketingAnalysis, RepoFile } from "./types";
 
 const STORAGE_KEY = "vibemark_projects";
 
@@ -41,6 +41,7 @@ export function createProject(
     repoUrl: repo.html_url,
     repoLanguage: repo.language,
     documents: [],
+    repoFiles: [],
     readmeContent,
     chatHistory: [],
     analysis: null,
@@ -82,6 +83,27 @@ export function updateAnalysis(projectId: string, analysis: MarketingAnalysis) {
   const project = projects.find((p) => p.id === projectId);
   if (project) {
     project.analysis = analysis;
+    saveProjects(projects);
+  }
+}
+
+export function addRepoFile(projectId: string, file: RepoFile) {
+  const projects = getProjects();
+  const project = projects.find((p) => p.id === projectId);
+  if (project) {
+    // Avoid duplicates by path
+    if (!project.repoFiles.find((f) => f.path === file.path)) {
+      project.repoFiles.push(file);
+      saveProjects(projects);
+    }
+  }
+}
+
+export function removeRepoFile(projectId: string, fileId: string) {
+  const projects = getProjects();
+  const project = projects.find((p) => p.id === projectId);
+  if (project) {
+    project.repoFiles = project.repoFiles.filter((f) => f.id !== fileId);
     saveProjects(projects);
   }
 }

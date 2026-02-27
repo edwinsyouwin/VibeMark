@@ -2,8 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { X, Search, Lock, Globe, Loader2 } from "lucide-react";
-import { GitHubRepo, Project } from "@/lib/types";
-import { createProject } from "@/lib/store";
+import { GitHubRepo, Project, RepoFile } from "@/lib/types";
+import { createProject, addRepoFile } from "@/lib/store";
+
+// Files to auto-fetch for marketing context
+const AUTO_FETCH_PATTERNS = [
+  "package.json",
+  "Cargo.toml",
+  "pyproject.toml",
+  "setup.py",
+  "go.mod",
+  "Gemfile",
+  "pom.xml",
+  "build.gradle",
+  "CONTRIBUTING.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  ".github/FUNDING.yml",
+];
 
 interface RepoSelectorProps {
   onClose: () => void;
@@ -46,10 +62,15 @@ export default function RepoSelector({
     setSelecting(repo.id);
     try {
       const [owner, repoName] = repo.full_name.split("/");
-      const readmeRes = await fetch(
-        `/api/github/repos/${owner}/${repoName}/readme`
-      );
+
+      // Fetch README and file tree in parallel
+      const [readmeRes, treeRes] = await Promise.all([
+        fetch(`/api/github/repos/${owner}/${repoName}/readme`),
+        fetch(`/api/github/repos/${owner}/${repoName}/tree`),
+      ]);
+
       const readmeData = await readmeRes.json();
+      const treeData = await treeRes.json();
 
       const project = createProject(
         {
@@ -61,6 +82,55 @@ export default function RepoSelector({
         },
         readmeData.content
       );
+
+      // Auto-fetch key config files from the tree
+      if (treeData.entries) {
+        const filesToFetch = (treeData.entries as { path: string; type: string }[])
+          .filter(
+            (entry) =>
+              entry.type === "blob" &&
+              AUTO_FETCH_PATTERNS.some(
+                (pattern) =>
+                  entry.path === pattern ||
+                  entry.path.endsWith(`/${pattern}`)
+              )
+          )
+          .map((entry) => entry.path);
+
+        // Fetch all key files in parallel
+        const fileResults = await Promise.all(
+          filesToFetch.map(async (path) => {
+            try {
+              const res = await fetch(
+                `/api/github/repos/${owner}/${repoName}/file`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ path }),
+                }
+              );
+              if (!res.ok) return null;
+              const data = await res.json();
+              return { path, content: data.content as string };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        for (const result of fileResults) {
+          if (result && result.content) {
+            const repoFile: RepoFile = {
+              id: crypto.randomUUID(),
+              path: result.path,
+              content: result.content.slice(0, 50000),
+              autoFetched: true,
+            };
+            addRepoFile(project.id, repoFile);
+          }
+        }
+      }
+
       onProjectCreated(project);
     } catch {
       setError("Failed to set up project");

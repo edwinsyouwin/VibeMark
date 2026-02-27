@@ -65,6 +65,7 @@ export default function ChatInterface({
             repoDescription: project.repoDescription,
             repoLanguage: project.repoLanguage,
             readmeContent: project.readmeContent,
+            repoFiles: project.repoFiles,
             documents: project.documents,
           },
         }),

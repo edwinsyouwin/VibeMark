@@ -67,6 +67,8 @@ export async function POST(request: NextRequest) {
     context.repoDescription && `Description: ${context.repoDescription}`,
     context.repoLanguage && `Primary Language: ${context.repoLanguage}`,
     context.readmeContent && `README:\n${context.readmeContent}`,
+    context.repoFiles?.length > 0 &&
+      `Source Files from Repository:\n${context.repoFiles.map((f: { path: string; content: string }) => `--- ${f.path} ---\n${f.content}`).join("\n\n")}`,
     context.documents?.length > 0 &&
       `Additional Documents:\n${context.documents.map((d: { name: string; content: string }) => `--- ${d.name} ---\n${d.content}`).join("\n\n")}`,
   ]

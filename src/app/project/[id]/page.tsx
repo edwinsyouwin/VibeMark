@@ -9,6 +9,7 @@ import {
   MessageSquare,
   BarChart3,
   FileText,
+  FolderGit2,
   ExternalLink,
 } from "lucide-react";
 import { getProject } from "@/lib/store";
@@ -16,8 +17,9 @@ import { Project } from "@/lib/types";
 import ChatInterface from "@/components/chat-interface";
 import AnalysisView from "@/components/analysis-view";
 import DocumentUpload from "@/components/document-upload";
+import FileBrowser from "@/components/file-browser";
 
-type Tab = "chat" | "analysis" | "documents";
+type Tab = "chat" | "analysis" | "files" | "documents";
 
 export default function ProjectPage() {
   const { data: session, status } = useSession();
@@ -61,6 +63,11 @@ export default function ProjectPage() {
       key: "analysis",
       label: "Analysis",
       icon: <BarChart3 className="w-4 h-4" />,
+    },
+    {
+      key: "files",
+      label: "Repo Files",
+      icon: <FolderGit2 className="w-4 h-4" />,
     },
     {
       key: "documents",
@@ -117,6 +124,11 @@ export default function ProjectPage() {
               {tab.key === "analysis" && project.analysis && (
                 <span className="w-2 h-2 bg-accent rounded-full" />
               )}
+              {tab.key === "files" && project.repoFiles.length > 0 && (
+                <span className="text-xs bg-surface-light rounded-full px-1.5">
+                  {project.repoFiles.length}
+                </span>
+              )}
               {tab.key === "documents" && project.documents.length > 0 && (
                 <span className="text-xs bg-surface-light rounded-full px-1.5">
                   {project.documents.length}
@@ -154,6 +166,14 @@ export default function ProjectPage() {
               </div>
             )}
           </>
+        )}
+        {activeTab === "files" && (
+          <FileBrowser
+            projectId={project.id}
+            repoFullName={project.repoFullName}
+            repoFiles={project.repoFiles}
+            onUpdate={refreshProject}
+          />
         )}
         {activeTab === "documents" && (
           <div className="p-6 max-w-2xl">
