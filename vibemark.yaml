@@ -1,0 +1,62 @@
+project:
+  name: Vibemark
+  description: Marketing automation for vibe-coded projects — scan, strategize, generate, and post
+  language: Python
+  frameworks:
+    - Typer
+  features:
+    - Project scanning (auto-reads code, README, configs)
+    - Structured marketing consultation (guided strategy sessions)
+    - Channel-ready copy generation (social, landing page, README)
+    - Automated posting to social channels
+  repo_url: ''
+  license: ''
+
+brand:
+  tone: authentic, builder-to-builder, practical
+  audience: vibe coders — technical builders using AI to ship apps who struggle with marketing and distribution
+  tagline: Your marketing department for vibe-coded projects
+  keywords:
+    - vibe coding
+    - marketing automation
+    - developer tools
+    - indie hacker
+    - distribution
+    - AI marketing
+
+insights:
+  problem_statement: >-
+    Technical builders can now ship full-stack apps in days with AI assistance,
+    but they hit a wall when it comes to marketing and distribution. Building is
+    no longer the hard part — getting users is.
+  target_personas:
+    - Vibe coders shipping AI-assisted projects
+    - Solo developers building side projects
+    - Technical founders who aren't natural marketers
+  value_proposition: >-
+    Vibemark gives vibe coders their own marketing department — it understands
+    your project, coaches you through strategy, generates channel-ready copy,
+    and posts it for you.
+  differentiators:
+    - Auto-scans project files for context (no copy-pasting into ChatGPT)
+    - Structured consulting flow that teaches marketing thinking, not just generates copy
+    - End-to-end pipeline from scan to strategy to copy to posting
+  use_cases:
+    - Launch a new side project on X, Reddit, and Threads
+    - Generate a polished README and landing page copy
+    - Figure out positioning and messaging for a technical product
+  competitors:
+    - ChatGPT/Claude with manual prompts (no project context, no structure)
+    - Jasper/Copy.ai (built for marketing teams, not devs)
+    - Freelance marketers (expensive, slow, don't understand your stack)
+  origin_story: >-
+    After building two full-stack apps in three weeks with Claude, I realized
+    that building isn't the hard part anymore — distribution is. As a data
+    engineer, not a marketer, no AI tool was designed to help technical builders
+    like me actually get users. So I built Vibemark.
+  goals:
+    - Awareness — get Vibemark in front of vibe coders on X, Reddit, Threads
+    - Adoption — first 100 users to validate demand
+    - Frictionless onboarding so discoverers become users
+
+model: claude-sonnet-4-20250514

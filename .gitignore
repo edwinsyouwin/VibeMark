@@ -1,37 +1,20 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
 .env
-.env*.local
+vibemark-output/
 
-# vercel
-.vercel
+# Web frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# SQLite DB
+*.db
